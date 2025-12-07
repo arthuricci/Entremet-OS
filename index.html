@@ -3,71 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Site no GitHub</title>
+    <title>Meu Chat AI</title>
     <style>
-        /* Estilos Visuais (CSS) */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            margin: 0;
-            display: flex;
-            justify_content: center;
-            align-items: center;
-            color: #333;
-        }
-        .card {
-            background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            text-align: center;
-            max-width: 350px;
-            width: 100%;
-        }
-        .avatar {
-            width: 100px;
-            height: 100px;
-            background-color: #ddd;
-            border-radius: 50%;
-            margin: 0 auto 15px;
-            background-image: url('https://github.com/github.png'); /* Imagem do mascote do GitHub */
-            background-size: cover;
-        }
-        h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            color: #2d3748;
-        }
-        p {
-            color: #718096;
-            margin-top: 5px;
-        }
-        .btn {
-            display: block;
-            background-color: #764ba2;
-            color: white;
-            text-decoration: none;
-            padding: 10px;
-            margin-top: 15px;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        .btn:hover {
-            background-color: #5a3780;
-        }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; height: 100vh; margin: 0; }
+        .chat-container { width: 100%; max-width: 600px; background: white; display: flex; flex-direction: column; box-shadow: 0 0 10px rgba(0,0,0,0.1); height: 100vh; }
+        
+        /* Área de Configuração da Chave */
+        .config-area { padding: 15px; background: #2c3e50; color: white; }
+        .config-area input { width: 95%; padding: 8px; border-radius: 4px; border: none; margin-top: 5px; }
+        .config-area label { font-size: 0.9rem; font-weight: bold; }
+
+        /* Área das Mensagens */
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        /* Balões de fala */
+        .message { padding: 10px 15px; border-radius: 15px; max-width: 80%; line-height: 1.4; }
+        .user { align-self: flex-end; background-color: #0084ff; color: white; border-bottom-right-radius: 2px; }
+        .ai { align-self: flex-start; background-color: #e4e6eb; color: black; border-bottom-left-radius: 2px; }
+        .error { background-color: #ffcccc; color: red; align-self: center; }
+
+        /* Área de Digitação */
+        .input-area { padding: 20px; border-top: 1px solid #ddd; display: flex; gap: 10px; background: white; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        button:disabled { background: #ccc; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <div class="avatar"></div>
-        <h1>Ol�, Mundo!</h1>
-        <p>Este � meu primeiro site hospedado gratuitamente no GitHub Pages.</p>
-        
-        <a href="https://github.com" class="btn" target="_blank">Meu Perfil</a>
-        <a href="#" class="btn" style="background-color: #ddd; color: #333;">Entrar em Contato</a>
+    <div class="chat-container">
+        <div class="config-area">
+            <label>🔐 Coloque sua API Key da OpenAI aqui:</label>
+            <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+        </div>
+
+        <div id="messages">
+            <div class="message ai">Olá! Coloque sua chave ali em cima e vamos conversar.</div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Digite sua mensagem...">
+            <button onclick="sendMessage()" id="sendBtn">Enviar</button>
+        </div>
     </div>
+
+    <script>
+        async function sendMessage() {
+            const apiKey = document.getElementById('apiKey').value;
+            const userInput = document.getElementById('userInput');
+            const messagesDiv = document.getElementById('messages');
+            const sendBtn = document.getElementById('sendBtn');
+
+            if (!apiKey) {
+                alert("Por favor, cole sua API Key primeiro na barra escura lá no topo!");
+                return;
+            }
+            if (!userInput.value) return;
+
+            // 1. Mostrar mensagem do usuário
+            const userText = userInput.value;
+            addMessage(userText, 'user');
+            userInput.value = '';
+            
+            // Bloquear botão enquanto carrega
+            sendBtn.disabled = true;
+            sendBtn.innerText = '...';
+
+            try {
+                // 2. CHAMADA PARA A API (A MÁGICA ACONTECE AQUI)
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo", // Ou gpt-4 se você tiver acesso
+                        messages: [{ role: "user", content: userText }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                // 3. Mostrar resposta da IA
+                const aiResponse = data.choices[0].message.content;
+                addMessage(aiResponse, 'ai');
+
+            } catch (error) {
+                addMessage("Erro: " + error.message, 'error');
+            }
+
+            // Reativar botão
+            sendBtn.disabled = false;
+            sendBtn.innerText = 'Enviar';
+        }
+
+        function addMessage(text, sender) {
+            const messagesDiv = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.classList.add('message', sender);
+            div.innerText = text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rolar para baixo
+        }
+    </script>
 
 </body>
 </html>
